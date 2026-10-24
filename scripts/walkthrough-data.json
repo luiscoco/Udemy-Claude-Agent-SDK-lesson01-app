@@ -1,0 +1,58 @@
+[
+  {
+    "number": "01",
+    "title": "Install a TypeScript project",
+    "source": "package.json",
+    "explanation": "The SDK is the runtime dependency. tsx executes TypeScript; type=module enables ES modules. npm ci reproduces this completed app from its lockfile.",
+    "code": "mkdir my-agent\ncd my-agent\nnpm init -y\nnpm pkg set type=module\nnpm install @anthropic-ai/claude-agent-sdk@0.3.310\nnpm install --save-dev tsx typescript @types/node\nmkdir sample-workspace\n\"Hello, students!\" | Set-Content sample-workspace/notes.txt",
+    "language": "powershell"
+  },
+  {
+    "number": "02",
+    "title": "Pass the key through the process environment",
+    "source": "src/sample.ts",
+    "explanation": "The terminal sample does not load .env. It checks the inherited environment before creating a query. npm run sample:env explicitly loads the optional local file instead.",
+    "code": "if (!process.env.ANTHROPIC_API_KEY || process.env.ANTHROPIC_API_KEY.startsWith(\"your_\")) {\n  console.error(\"Set ANTHROPIC_API_KEY in this shell first. See the How to run page.\");\n  process.exit(1);\n}",
+    "language": "typescript"
+  },
+  {
+    "number": "03",
+    "title": "Give the agent a small directory and Glob",
+    "source": "src/agent.ts",
+    "explanation": "The fixed cwd is sample-workspace. Only Glob is available and pre-approved. Four SDK turns leave room for discovery and a final answer; one query call can contain several model turns.",
+    "code": "export function lessonOptions(abortController = new AbortController()): Options {\n  return {\n    model: MODEL,\n    cwd: WORKSPACE,\n    tools: [\"Glob\"],\n    allowedTools: [\"Glob\"],\n    systemPrompt: \"List the files in your current working directory using Glob with pattern **/*. Report relative paths only. Do not search outside the current directory. Do not invent file names or read file contents.\",\n    settingSources: [], mcpServers: {}, plugins: [], persistSession: false,\n    maxTurns: 4, maxBudgetUsd: 0.15, abortController,\n  };\n}",
+    "language": "typescript"
+  },
+  {
+    "number": "04",
+    "title": "Ask the exact first question",
+    "source": "src/sample.ts",
+    "explanation": "query receives the literal lesson prompt through DEFAULT_PROMPT and returns an async iterator. The same options power the CLI and the web lab.",
+    "code": "const conversation = query({ prompt: DEFAULT_PROMPT, options: lessonOptions() });",
+    "language": "typescript"
+  },
+  {
+    "number": "05",
+    "title": "Print tool activity, text and the final result",
+    "source": "src/sample.ts",
+    "explanation": "Print only human-readable text and tool names, followed by the final subtype. is_error also matters even when a subtype says success. finally closes the query object.",
+    "code": "try {\n  for await (const message of conversation) {\n    if (message.type === \"assistant\") {\n      for (const block of message.message.content) {\n        if (block.type === \"text\") console.log(block.text);\n        if (block.type === \"tool_use\") console.log(`Tool: ${block.name}`);\n      }\n    }\n    if (message.type === \"result\") {\n      console.log(`Result: ${message.subtype} \u00b7 Turns: ${message.num_turns}`);\n      if (message.subtype !== \"success\" || message.is_error) process.exitCode = 1;\n    }\n  }\n} finally {\n  conversation.close();\n}",
+    "language": "typescript"
+  },
+  {
+    "number": "06",
+    "title": "Forward selected events to the browser",
+    "source": "src/agent.ts",
+    "explanation": "The host projects text, tool calls and the final result into student-facing events. It does not send the API key or raw runtime configuration.",
+    "code": "export function projectMessage(message: SDKMessage): LabEvent[] {\n  if (message.type === \"system\" && message.subtype === \"init\") {\n    return [{ type: \"initialized\", model: message.model, tools: message.tools.length }];\n  }\n  if (message.type === \"assistant\") {\n    const events: LabEvent[] = [];\n    for (const block of message.message.content) {\n      if (block.type === \"text\") events.push({ type: \"answer\", text: block.text });\n      if (block.type === \"tool_use\") {\n        const input = block.input as { pattern?: string };\n        events.push({ type: \"tool\", name: block.name, pattern: input.pattern || \"\" });\n      }\n    }\n    return events;\n  }\n  if (message.type === \"result\") {\n    const success = message.subtype === \"success\" && !message.is_error;\n    return [{ type: \"result\", status: success ? \"success\" : message.subtype === \"success\" ? \"error\" : message.subtype,\n      text: message.subtype === \"success\" ? message.result : message.errors.join(\"\\n\"),\n      sessionId: message.session_id, costUsd: message.total_cost_usd, turns: message.num_turns }];\n  }\n  return [];\n}",
+    "language": "typescript"
+  },
+  {
+    "number": "07",
+    "title": "Compare answer with real local evidence",
+    "source": "src/client.ts",
+    "explanation": "The host reads the demo directory for a labelled reference list. That reference is not supplied to query as an answer. The browser uses textContent, and the live recording verifies an actual Glob call.",
+    "code": "async function configure() {\n  const config = await (await fetch(\"/api/config\")).json();\n  ($(\"prompt\") as HTMLTextAreaElement).value = config.defaultPrompt;\n  $(\"model\").textContent = config.model;\n  $(\"files\").textContent = config.sampleFiles.join(\"\\n\");\n  $(\"configuration\").textContent = config.ready ? \"API key configured on the server\" : \"Setup needed: add your API key in .env\";\n  ($(\"run\") as HTMLButtonElement).disabled = !config.ready;\n}",
+    "language": "typescript"
+  }
+]

@@ -1,0 +1,94 @@
+<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Agent SDK LESSON 01 · Explain each &lt;em&gt;code step.&lt;/em&gt;</title><link rel="stylesheet" href="/style.css"><link rel="stylesheet" href="/code-highlighting.css"></head><body><main><div class="brand"><a href="/">How <span>Claude Agent SDK</span> Works</a><span class="badge">LESSON 01 / GETTING STARTED</span></div><header class="hero"><div><div class="eyebrow">INSTALL · CONFIGURE · RUN</div><h1>Explain each <em>code step.</em></h1><p class="lead">Read the actual installation, environment, query and result-handling code.</p></div><img src="/astronaut.png" alt="Course astronaut mascot"></header><nav class="nav" aria-label="Application sections"><a href="/">Application lab</a><a href="/learn.html">What you will learn</a><a href="/run.html">How to run</a><a href="/architecture.html">Architecture & workflow</a><a href="/walkthrough.html" aria-current="page">Code walkthrough</a><button id="theme" type="button">Dark mode</button></nav><section class="step"><h2>Small standalone sample</h2><p>Run from the project root after setting the key in this shell. The full web app adds input checks and browser transport.</p><pre><code class="language-typescript">import { query } from &quot;@anthropic-ai/claude-agent-sdk&quot;;
+import { resolve } from &quot;node:path&quot;;
+
+// Run from the project root, after setting the key in this shell.
+if (!process.env.ANTHROPIC_API_KEY) throw new Error(&quot;Set ANTHROPIC_API_KEY in this shell first.&quot;);
+
+for await (const message of query({
+  prompt: &quot;What files are here?&quot;,
+  options: {
+    model: process.env.CLAUDE_MODEL || &quot;claude-sonnet-4-6&quot;,
+    cwd: resolve(&quot;sample-workspace&quot;),
+    tools: [&quot;Glob&quot;],
+    allowedTools: [&quot;Glob&quot;],
+    systemPrompt: &quot;Use Glob to list relative file paths in the current directory only. Do not invent names or read contents.&quot;,
+    settingSources: [], mcpServers: {}, plugins: [], persistSession: false,
+    maxTurns: 4, maxBudgetUsd: 0.15,
+  },
+})) {
+  if (message.type === &quot;assistant&quot;) {
+    for (const block of message.message.content) {
+      if (block.type === &quot;text&quot;) console.log(block.text);
+      if (block.type === &quot;tool_use&quot;) console.log(`Tool: ${block.name}`);
+    }
+  }
+  if (message.type === &quot;result&quot;) {
+    console.log(`Result: ${message.subtype}`);
+    if (message.subtype !== &quot;success&quot; || message.is_error) process.exitCode = 1;
+  }
+}
+</code></pre></section><section class="step"><span class="number">01</span><h2>Install a TypeScript project</h2><p>The SDK is the runtime dependency. tsx executes TypeScript; type=module enables ES modules. npm ci reproduces this completed app from its lockfile.</p><p class="source">Source: package.json</p><pre><code class="language-powershell">mkdir my-agent
+cd my-agent
+npm init -y
+npm pkg set type=module
+npm install @anthropic-ai/claude-agent-sdk@0.3.310
+npm install --save-dev tsx typescript @types/node
+mkdir sample-workspace
+&quot;Hello, students!&quot; | Set-Content sample-workspace/notes.txt</code></pre></section><section class="step"><span class="number">02</span><h2>Pass the key through the process environment</h2><p>The terminal sample does not load .env. It checks the inherited environment before creating a query. npm run sample:env explicitly loads the optional local file instead.</p><p class="source">Source: src/sample.ts</p><pre><code class="language-typescript">if (!process.env.ANTHROPIC_API_KEY || process.env.ANTHROPIC_API_KEY.startsWith(&quot;your_&quot;)) {
+  console.error(&quot;Set ANTHROPIC_API_KEY in this shell first. See the How to run page.&quot;);
+  process.exit(1);
+}</code></pre></section><section class="step"><span class="number">03</span><h2>Give the agent a small directory and Glob</h2><p>The fixed cwd is sample-workspace. Only Glob is available and pre-approved. Four SDK turns leave room for discovery and a final answer; one query call can contain several model turns.</p><p class="source">Source: src/agent.ts</p><pre><code class="language-typescript">export function lessonOptions(abortController = new AbortController()): Options {
+  return {
+    model: MODEL,
+    cwd: WORKSPACE,
+    tools: [&quot;Glob&quot;],
+    allowedTools: [&quot;Glob&quot;],
+    systemPrompt: &quot;List the files in your current working directory using Glob with pattern **/*. Report relative paths only. Do not search outside the current directory. Do not invent file names or read file contents.&quot;,
+    settingSources: [], mcpServers: {}, plugins: [], persistSession: false,
+    maxTurns: 4, maxBudgetUsd: 0.15, abortController,
+  };
+}</code></pre></section><section class="step"><span class="number">04</span><h2>Ask the exact first question</h2><p>query receives the literal lesson prompt through DEFAULT_PROMPT and returns an async iterator. The same options power the CLI and the web lab.</p><p class="source">Source: src/sample.ts</p><pre><code class="language-typescript">const conversation = query({ prompt: DEFAULT_PROMPT, options: lessonOptions() });</code></pre></section><section class="step"><span class="number">05</span><h2>Print tool activity, text and the final result</h2><p>Print only human-readable text and tool names, followed by the final subtype. is_error also matters even when a subtype says success. finally closes the query object.</p><p class="source">Source: src/sample.ts</p><pre><code class="language-typescript">try {
+  for await (const message of conversation) {
+    if (message.type === &quot;assistant&quot;) {
+      for (const block of message.message.content) {
+        if (block.type === &quot;text&quot;) console.log(block.text);
+        if (block.type === &quot;tool_use&quot;) console.log(`Tool: ${block.name}`);
+      }
+    }
+    if (message.type === &quot;result&quot;) {
+      console.log(`Result: ${message.subtype} · Turns: ${message.num_turns}`);
+      if (message.subtype !== &quot;success&quot; || message.is_error) process.exitCode = 1;
+    }
+  }
+} finally {
+  conversation.close();
+}</code></pre></section><section class="step"><span class="number">06</span><h2>Forward selected events to the browser</h2><p>The host projects text, tool calls and the final result into student-facing events. It does not send the API key or raw runtime configuration.</p><p class="source">Source: src/agent.ts</p><pre><code class="language-typescript">export function projectMessage(message: SDKMessage): LabEvent[] {
+  if (message.type === &quot;system&quot; &amp;&amp; message.subtype === &quot;init&quot;) {
+    return [{ type: &quot;initialized&quot;, model: message.model, tools: message.tools.length }];
+  }
+  if (message.type === &quot;assistant&quot;) {
+    const events: LabEvent[] = [];
+    for (const block of message.message.content) {
+      if (block.type === &quot;text&quot;) events.push({ type: &quot;answer&quot;, text: block.text });
+      if (block.type === &quot;tool_use&quot;) {
+        const input = block.input as { pattern?: string };
+        events.push({ type: &quot;tool&quot;, name: block.name, pattern: input.pattern || &quot;&quot; });
+      }
+    }
+    return events;
+  }
+  if (message.type === &quot;result&quot;) {
+    const success = message.subtype === &quot;success&quot; &amp;&amp; !message.is_error;
+    return [{ type: &quot;result&quot;, status: success ? &quot;success&quot; : message.subtype === &quot;success&quot; ? &quot;error&quot; : message.subtype,
+      text: message.subtype === &quot;success&quot; ? message.result : message.errors.join(&quot;\n&quot;),
+      sessionId: message.session_id, costUsd: message.total_cost_usd, turns: message.num_turns }];
+  }
+  return [];
+}</code></pre></section><section class="step"><span class="number">07</span><h2>Compare answer with real local evidence</h2><p>The host reads the demo directory for a labelled reference list. That reference is not supplied to query as an answer. The browser uses textContent, and the live recording verifies an actual Glob call.</p><p class="source">Source: src/client.ts</p><pre><code class="language-typescript">async function configure() {
+  const config = await (await fetch(&quot;/api/config&quot;)).json();
+  ($(&quot;prompt&quot;) as HTMLTextAreaElement).value = config.defaultPrompt;
+  $(&quot;model&quot;).textContent = config.model;
+  $(&quot;files&quot;).textContent = config.sampleFiles.join(&quot;\n&quot;);
+  $(&quot;configuration&quot;).textContent = config.ready ? &quot;API key configured on the server&quot; : &quot;Setup needed: add your API key in .env&quot;;
+  ($(&quot;run&quot;) as HTMLButtonElement).disabled = !config.ready;
+}</code></pre></section><div class="actions"><a class="button" href="/architecture.html">← UML sequence</a><a class="button" href="/">Try the sample →</a></div><footer>CLAUDE AGENT SDK · LESSON 01 · INSTALL THE SDK · SET THE KEY · LIST FILES<br>TypeScript · local runtime · API key stays on the server</footer></main><script src="/navigation.js"></script><script src="/prism.js"></script><script src="/code-highlighting.js"></script></body></html>

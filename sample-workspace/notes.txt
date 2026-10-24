@@ -1,0 +1,2 @@
+This is a small classroom directory for the Agent SDK getting-started lesson.
+The agent lists file names with Glob. It does not need to read this content.

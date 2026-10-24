@@ -1,0 +1,52 @@
+<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Agent SDK LESSON 01 · Install. Configure. &lt;em&gt;Run.&lt;/em&gt;</title><link rel="stylesheet" href="/style.css"><link rel="stylesheet" href="/code-highlighting.css"></head><body><main><div class="brand"><a href="/">How <span>Claude Agent SDK</span> Works</a><span class="badge">LESSON 01 / GETTING STARTED</span></div><header class="hero"><div><div class="eyebrow">INSTALL · CONFIGURE · RUN</div><h1>Install. Configure. <em>Run.</em></h1><p class="lead">Follow the three beginner steps, then try the same agent in the browser.</p></div><img src="/astronaut.png" alt="Course astronaut mascot"></header><nav class="nav" aria-label="Application sections"><a href="/">Application lab</a><a href="/learn.html">What you will learn</a><a href="/run.html" aria-current="page">How to run</a><a href="/architecture.html">Architecture & workflow</a><a href="/walkthrough.html">Code walkthrough</a><button id="theme" type="button">Dark mode</button></nav><section class="step"><span class="number">01</span><h2>Install the SDK and choose TypeScript</h2><p>For this app use Node.js 24 or newer, npm, and a model-accessible Anthropic API key. On Windows, Git for Windows may be needed for Git Bash. Start a new project using:</p><pre><code class="language-powershell">mkdir my-agent
+cd my-agent
+npm init -y
+npm pkg set type=module
+npm install @anthropic-ai/claude-agent-sdk@0.3.310
+npm install --save-dev tsx typescript @types/node
+mkdir sample-workspace
+&quot;Hello, students!&quot; | Set-Content sample-workspace/notes.txt</code></pre><p>This teaches installation from scratch. Save the standalone source shown below as <code>agent.ts</code> in that project. For the completed application, clone it instead:</p><pre><code class="language-powershell">git clone https://github.com/luiscoco/Udemy-Claude-Agent-SDK-lesson01-app.git
+cd .\Udemy-Claude-Agent-SDK-lesson01-app
+npm ci</code></pre><p>In the original presentations workspace, the local directory is:</p><pre><code class="language-powershell">cd .\agent-sdk\lesson01-getting-started
+npm ci</code></pre></section><section class="step"><span class="number">02</span><h2>Set your API key in the same shell</h2><p>In the PowerShell terminal that will run the agent, replace the placeholder with your own key. The presence check prints only true or false.</p><pre><code class="language-powershell">$env:ANTHROPIC_API_KEY = &quot;your_api_key&quot;
+# Check presence without printing the key:
+node -e &quot;console.log(Boolean(process.env.ANTHROPIC_API_KEY))&quot;</code></pre><p>macOS/Linux Bash alternative:</p><pre><code class="language-bash">export ANTHROPIC_API_KEY=&quot;your_api_key&quot;
+node -e &#x27;console.log(Boolean(process.env.ANTHROPIC_API_KEY))&#x27;</code></pre><p>This assignment applies to the current shell and its child processes. Repeat it in a new terminal. The SDK does not automatically read .env. Keep the key out of code and Git.</p></section><section class="step"><span class="number">03</span><h2>Run the sample and print results</h2><p>From the completed application root, in the same configured shell:</p><pre><code class="language-powershell">npm run sample</code></pre><p>The sample asks exactly <strong>What files are here?</strong>. Watch for a Glob tool call, the names <code>notes.txt</code>, <code>src/hello.ts</code> and <code>todo.md</code>, and a final success result. Wording, turn count and cost can vary. A tool round trip often needs more than one model turn.</p><p>For your from-scratch project, run <code>npx tsx agent.ts</code> instead. Its folder contains the demo file you created in step 1.</p></section><section class="step"><span class="number">04</span><h2>Optional: use a local .env file explicitly</h2><p>For repeated classroom runs, copy the safe template without overwriting an existing file:</p><pre><code class="language-powershell">if (!(Test-Path .env)) { Copy-Item .env.example .env }
+notepad .env
+npm run sample:env</code></pre><pre><code class="language-dotenv">ANTHROPIC_API_KEY=your_api_key
+CLAUDE_MODEL=claude-sonnet-4-6
+PORT=3100</code></pre><p>The <code>sample:env</code> script explicitly loads this file through Node’s startup option. A key already set in the shell takes precedence. To use only the file in this PowerShell session, first run <code>Remove-Item Env:ANTHROPIC_API_KEY -ErrorAction SilentlyContinue</code>. On Windows, if needed, add <code>CLAUDE_CODE_GIT_BASH_PATH=C:/Program Files/Git/bin/bash.exe</code>.</p></section><section class="step"><span class="number">05</span><h2>Run the web application</h2><pre><code class="language-powershell">npm start
+# Open http://127.0.0.1:3100</code></pre><p>The web command loads an optional .env file too. Keep its terminal open. Click Run query once, compare the response with the host reference, then follow the architecture and code pages. Starting the server makes no model request. Each submitted prompt may incur API usage. Stop the server with Ctrl+C when finished.</p></section><section class="step"><span class="number">06</span><h2>Inspect the standalone sample and check your work</h2><pre><code class="language-typescript">import { query } from &quot;@anthropic-ai/claude-agent-sdk&quot;;
+import { resolve } from &quot;node:path&quot;;
+
+// Run from the project root, after setting the key in this shell.
+if (!process.env.ANTHROPIC_API_KEY) throw new Error(&quot;Set ANTHROPIC_API_KEY in this shell first.&quot;);
+
+for await (const message of query({
+  prompt: &quot;What files are here?&quot;,
+  options: {
+    model: process.env.CLAUDE_MODEL || &quot;claude-sonnet-4-6&quot;,
+    cwd: resolve(&quot;sample-workspace&quot;),
+    tools: [&quot;Glob&quot;],
+    allowedTools: [&quot;Glob&quot;],
+    systemPrompt: &quot;Use Glob to list relative file paths in the current directory only. Do not invent names or read contents.&quot;,
+    settingSources: [], mcpServers: {}, plugins: [], persistSession: false,
+    maxTurns: 4, maxBudgetUsd: 0.15,
+  },
+})) {
+  if (message.type === &quot;assistant&quot;) {
+    for (const block of message.message.content) {
+      if (block.type === &quot;text&quot;) console.log(block.text);
+      if (block.type === &quot;tool_use&quot;) console.log(`Tool: ${block.name}`);
+    }
+  }
+  if (message.type === &quot;result&quot;) {
+    console.log(`Result: ${message.subtype}`);
+    if (message.subtype !== &quot;success&quot; || message.is_error) process.exitCode = 1;
+  }
+}
+</code></pre><p>For the completed app:</p><pre><code class="language-powershell">npm test
+# After editing src/client.ts:
+npm run build:client
+# Refresh student pages from source:
+python scripts/build-pages.py</code></pre><p>Exercise: add a harmless file inside sample-workspace, refresh the browser reference and run the same question again. Explain why the result changes without changing the prompt.</p></section><section class="step"><h2>Troubleshooting</h2><div class="table"><table><tr><th>Symptom</th><th>What to check</th></tr><tr><td>Missing key</td><td>Set ANTHROPIC_API_KEY in this terminal before npm run sample, or explicitly use sample:env.</td></tr><tr><td>Authentication/model error</td><td>Check the active shell key, model access and billing. Restart the web server after configuration changes.</td></tr><tr><td>Runtime/Git Bash missing</td><td>Run npm ci with optional dependencies enabled. Check the Git Bash executable path on Windows.</td></tr><tr><td>Wrong files</td><td>Check cwd. This app deliberately points to sample-workspace, not the repository root.</td></tr><tr><td>Limit result</td><td>Read the actual final subtype. Tool activity alone is not success.</td></tr><tr><td>Port in use</td><td>If this app is already running, open its printed URL. Stop its original terminal with Ctrl+C to restart. For another service, choose a different PORT.</td></tr></table></div></section><div class="actions"><a class="button" href="/learn.html">← Learning goals</a><a class="button" href="/">Run the web sample →</a></div><footer>CLAUDE AGENT SDK · LESSON 01 · INSTALL THE SDK · SET THE KEY · LIST FILES<br>TypeScript · local runtime · API key stays on the server</footer></main><script src="/navigation.js"></script><script src="/prism.js"></script><script src="/code-highlighting.js"></script></body></html>

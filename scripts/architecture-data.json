@@ -1,0 +1,71 @@
+{
+  "lanes": [
+    "Student",
+    "Browser + host",
+    "Agent SDK",
+    "Claude API",
+    "Demo folder"
+  ],
+  "arrows": [
+    [
+      0,
+      1,
+      "1. Ask: What files are here?"
+    ],
+    [
+      1,
+      1,
+      "2. Check inherited key and input"
+    ],
+    [
+      1,
+      2,
+      "3. query(prompt, options); cwd set"
+    ],
+    [
+      2,
+      3,
+      "4. Send prompt and Glob tool definition"
+    ],
+    [
+      3,
+      2,
+      "5. Request Glob file discovery"
+    ],
+    [
+      2,
+      4,
+      "6. Run Glob in sample-workspace"
+    ],
+    [
+      4,
+      2,
+      "7. Return matching file paths"
+    ],
+    [
+      2,
+      3,
+      "8. Send the tool result to Claude"
+    ],
+    [
+      3,
+      2,
+      "9. Produce the final answer"
+    ],
+    [
+      2,
+      1,
+      "10. Yield tool, text and result messages"
+    ],
+    [
+      1,
+      1,
+      "11. Print results or render safe text"
+    ],
+    [
+      1,
+      0,
+      "12. Compare files; check final status"
+    ]
+  ]
+}
