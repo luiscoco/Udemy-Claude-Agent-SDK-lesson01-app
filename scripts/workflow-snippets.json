@@ -1,0 +1,71 @@
+[
+  {
+    "source": "src/agent.ts",
+    "explanation": "The literal lesson question becomes DEFAULT_PROMPT. The web configuration and terminal sample both use this same value.",
+    "start": "export const DEFAULT_PROMPT ="
+  },
+  {
+    "source": "src/server.ts",
+    "explanation": "The server checks that its launching environment contains a non-placeholder key before accepting the request. The actual key is never returned to the page.",
+    "start": "const ready ="
+  },
+  {
+    "source": "src/agent.ts",
+    "explanation": "One query receives the prompt and lessonOptions. Those options fix cwd to sample-workspace; the SDK manages subsequent interactions.",
+    "start": "  const conversation = query({",
+    "end": "  try {"
+  },
+  {
+    "source": "src/agent.ts",
+    "explanation": "This is the application configuration for the SDK-managed request: choose the model and working directory, and expose only Glob. The SDK performs the model API transport internally.",
+    "start": "    model: MODEL,",
+    "end": "    systemPrompt:"
+  },
+  {
+    "source": "src/agent.ts",
+    "explanation": "The observer detects the actual tool_use block and records its tool name and pattern. Claude chooses the request; this code observes it rather than fabricating a model response.",
+    "start": "      if (block.type === \"tool_use\") {",
+    "end": "    }\n    return events;"
+  },
+  {
+    "source": "src/agent.ts",
+    "explanation": "The cwd and tools properties establish the boundary for the built-in Glob operation. The SDK executes Glob; there is no custom Glob implementation in this app.",
+    "start": "    cwd: WORKSPACE,",
+    "end": "    systemPrompt:"
+  },
+  {
+    "source": "src/agent.ts",
+    "explanation": "The SDK collects the actual file-path result internally. This consuming loop receives the SDK stream and projects selected message types; this app does not separately forward raw user/tool_result content.",
+    "start": "    for await (const message of conversation) {",
+    "end": "    if (!gotResult"
+  },
+  {
+    "source": "src/agent.ts",
+    "explanation": "The SDK feeds Glob output into its next model interaction while the host consumes the same query iterator. The host does not manually send tool feedback or call query again for each message.",
+    "start": "    for await (const message of conversation) {",
+    "end": "    if (!gotResult"
+  },
+  {
+    "source": "src/agent.ts",
+    "explanation": "Text blocks from the actual assistant message become answer events. These statements observe the model answer after the SDK has handled discovery.",
+    "start": "      if (block.type === \"text\") events.push"
+  },
+  {
+    "source": "src/agent.ts",
+    "explanation": "The async loop forwards selected tool, text and final-result events. gotResult records a final outcome independently from intermediate assistant content.",
+    "start": "    for await (const message of conversation) {",
+    "end": "    if (!gotResult"
+  },
+  {
+    "source": "src/sample.ts",
+    "explanation": "The terminal sample prints assistant text and tool names. The browser offers the corresponding event display; both consume SDK output.",
+    "start": "    if (message.type === \"assistant\") {",
+    "end": "    if (message.type === \"result\")"
+  },
+  {
+    "source": "src/client.ts",
+    "explanation": "The browser updates final status, estimated cost, turn count and session ID from the actual result. Students compare the answer with the separately labelled host file list.",
+    "start": "        finalResult = true;",
+    "end": "      } else if (data.type === \"error\")"
+  }
+]

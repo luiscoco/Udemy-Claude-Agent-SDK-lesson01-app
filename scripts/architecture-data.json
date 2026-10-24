@@ -67,5 +67,127 @@
       0,
       "12. Compare files; check final status"
     ]
+  ],
+  "steps": [
+    {
+      "number": 1,
+      "source": "src/agent.ts",
+      "firstLine": 5,
+      "lastLine": 5,
+      "code": "export const DEFAULT_PROMPT = \"What files are here?\";",
+      "explanation": "The literal lesson question becomes DEFAULT_PROMPT. The web configuration and terminal sample both use this same value.",
+      "language": "typescript",
+      "sourceSHA256": "a4bc136ab8ea51a6c0dce930a148cefc46e7b87605550f88842862a224643ea6"
+    },
+    {
+      "number": 2,
+      "source": "src/server.ts",
+      "firstLine": 17,
+      "lastLine": 17,
+      "code": "const ready = () => Boolean(process.env.ANTHROPIC_API_KEY && !process.env.ANTHROPIC_API_KEY.startsWith(\"your_\"));",
+      "explanation": "The server checks that its launching environment contains a non-placeholder key before accepting the request. The actual key is never returned to the page.",
+      "language": "typescript",
+      "sourceSHA256": "84bedcf0f822f82b18cc6eb185e1e690177e98a4d6d86e99676f2cdb1afe6414"
+    },
+    {
+      "number": 3,
+      "source": "src/agent.ts",
+      "firstLine": 69,
+      "lastLine": 72,
+      "code": "const conversation = query({\n  prompt,\n  options: lessonOptions(abortController),\n});",
+      "explanation": "One query receives the prompt and lessonOptions. Those options fix cwd to sample-workspace; the SDK manages subsequent interactions.",
+      "language": "typescript",
+      "sourceSHA256": "a4bc136ab8ea51a6c0dce930a148cefc46e7b87605550f88842862a224643ea6"
+    },
+    {
+      "number": 4,
+      "source": "src/agent.ts",
+      "firstLine": 16,
+      "lastLine": 19,
+      "code": "model: MODEL,\ncwd: WORKSPACE,\ntools: [\"Glob\"],\nallowedTools: [\"Glob\"],",
+      "explanation": "This is the application configuration for the SDK-managed request: choose the model and working directory, and expose only Glob. The SDK performs the model API transport internally.",
+      "language": "typescript",
+      "sourceSHA256": "a4bc136ab8ea51a6c0dce930a148cefc46e7b87605550f88842862a224643ea6"
+    },
+    {
+      "number": 5,
+      "source": "src/agent.ts",
+      "firstLine": 48,
+      "lastLine": 51,
+      "code": "if (block.type === \"tool_use\") {\n  const input = block.input as { pattern?: string };\n  events.push({ type: \"tool\", name: block.name, pattern: input.pattern || \"\" });\n}",
+      "explanation": "The observer detects the actual tool_use block and records its tool name and pattern. Claude chooses the request; this code observes it rather than fabricating a model response.",
+      "language": "typescript",
+      "sourceSHA256": "a4bc136ab8ea51a6c0dce930a148cefc46e7b87605550f88842862a224643ea6"
+    },
+    {
+      "number": 6,
+      "source": "src/agent.ts",
+      "firstLine": 17,
+      "lastLine": 19,
+      "code": "cwd: WORKSPACE,\ntools: [\"Glob\"],\nallowedTools: [\"Glob\"],",
+      "explanation": "The cwd and tools properties establish the boundary for the built-in Glob operation. The SDK executes Glob; there is no custom Glob implementation in this app.",
+      "language": "typescript",
+      "sourceSHA256": "a4bc136ab8ea51a6c0dce930a148cefc46e7b87605550f88842862a224643ea6"
+    },
+    {
+      "number": 7,
+      "source": "src/agent.ts",
+      "firstLine": 74,
+      "lastLine": 79,
+      "code": "for await (const message of conversation) {\n  for (const event of projectMessage(message)) {\n    if (event.type === \"result\") gotResult = true;\n    emit(event);\n  }\n}",
+      "explanation": "The SDK collects the actual file-path result internally. This consuming loop receives the SDK stream and projects selected message types; this app does not separately forward raw user/tool_result content.",
+      "language": "typescript",
+      "sourceSHA256": "a4bc136ab8ea51a6c0dce930a148cefc46e7b87605550f88842862a224643ea6"
+    },
+    {
+      "number": 8,
+      "source": "src/agent.ts",
+      "firstLine": 74,
+      "lastLine": 79,
+      "code": "for await (const message of conversation) {\n  for (const event of projectMessage(message)) {\n    if (event.type === \"result\") gotResult = true;\n    emit(event);\n  }\n}",
+      "explanation": "The SDK feeds Glob output into its next model interaction while the host consumes the same query iterator. The host does not manually send tool feedback or call query again for each message.",
+      "language": "typescript",
+      "sourceSHA256": "a4bc136ab8ea51a6c0dce930a148cefc46e7b87605550f88842862a224643ea6"
+    },
+    {
+      "number": 9,
+      "source": "src/agent.ts",
+      "firstLine": 47,
+      "lastLine": 47,
+      "code": "if (block.type === \"text\") events.push({ type: \"answer\", text: block.text });",
+      "explanation": "Text blocks from the actual assistant message become answer events. These statements observe the model answer after the SDK has handled discovery.",
+      "language": "typescript",
+      "sourceSHA256": "a4bc136ab8ea51a6c0dce930a148cefc46e7b87605550f88842862a224643ea6"
+    },
+    {
+      "number": 10,
+      "source": "src/agent.ts",
+      "firstLine": 74,
+      "lastLine": 79,
+      "code": "for await (const message of conversation) {\n  for (const event of projectMessage(message)) {\n    if (event.type === \"result\") gotResult = true;\n    emit(event);\n  }\n}",
+      "explanation": "The async loop forwards selected tool, text and final-result events. gotResult records a final outcome independently from intermediate assistant content.",
+      "language": "typescript",
+      "sourceSHA256": "a4bc136ab8ea51a6c0dce930a148cefc46e7b87605550f88842862a224643ea6"
+    },
+    {
+      "number": 11,
+      "source": "src/sample.ts",
+      "firstLine": 12,
+      "lastLine": 17,
+      "code": "if (message.type === \"assistant\") {\n  for (const block of message.message.content) {\n    if (block.type === \"text\") console.log(block.text);\n    if (block.type === \"tool_use\") console.log(`Tool: ${block.name}`);\n  }\n}",
+      "explanation": "The terminal sample prints assistant text and tool names. The browser offers the corresponding event display; both consume SDK output.",
+      "language": "typescript",
+      "sourceSHA256": "8a624b4ac34ee19eb4224672906d98561537b05e1475ca76a2a04c977f4dcd30"
+    },
+    {
+      "number": 12,
+      "source": "src/client.ts",
+      "firstLine": 33,
+      "lastLine": 35,
+      "code": "finalResult = true; $(\"status\").textContent = data.status === \"success\" ? \"Success\" : data.status;\n$(\"cost\").textContent = \"$\" + data.costUsd.toFixed(4); $(\"turns\").textContent = String(data.turns); $(\"session\").textContent = data.sessionId;\nif (!answer || data.status !== \"success\") $(\"answer\").textContent = data.text;",
+      "explanation": "The browser updates final status, estimated cost, turn count and session ID from the actual result. Students compare the answer with the separately labelled host file list.",
+      "language": "typescript",
+      "sourceSHA256": "1485f6aacedcf8143158044ea6bf578481562e45a07dc06bc755f3d1fef4f150"
+    }
   ]
 }

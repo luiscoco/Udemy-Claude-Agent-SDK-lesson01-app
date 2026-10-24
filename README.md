@@ -221,3 +221,8 @@ Source, student pages, demo files, tests, lockfile and visual assets are include
 
 - [Agent SDK quickstart: installation and environment authentication](https://code.claude.com/docs/en/agent-sdk/quickstart)
 - [Tool availability and permissions](https://code.claude.com/docs/en/agent-sdk/permissions)
+
+
+## Code at every UML workflow step
+
+Every numbered architecture step includes a syntax-coloured source excerpt, its filename and line range, and an explanation connecting the code to that step. scripts/workflow-snippets.py extracts the excerpts from the shipped source on regeneration. SDK-managed operations show the real configuration or observation boundary, with the distinction explained.
